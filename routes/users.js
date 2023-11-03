@@ -1,6 +1,7 @@
 const express = require('express');
 const User = require('../models/user');
 const passport = require('passport');
+const authenticate = require('../authenticate');
 
 const router = express.Router();
 
@@ -41,11 +42,15 @@ router.post('/signup', (req, res) => {
 // router.post('/login' - post request to /users/login
 // (req, res) => - This post method, as usual, needs a middleware funciton to be passed in as the second argument after the path.
 // passport.authenticate('local') - added as a second argument, enables passport authentication on this route. Will handle logging in the user including challenging the user for credentials, parsing the credentials from the request body, taking care of errors, etc. We just have to send the successful response.
+// authenticate.getToken - once the username & password is authenticated, issue a token using the getToken method that we exported from the authenticate module.
+// ({_id: req.user._id}) - passing it an object that contains a payload which includes the user id from the request object.
+// token: token - including the token in a respone to the client. after this all the subsequent requests from this client will carry the token in the header which we'll use to verify the user has already logged in.
 
 router.post('/login', passport.authenticate('local'), (req, res) => {
+    const token = authenticate.getToken({_id: req.user._id});
     res.statusCode = 200;
     res.setHeader('Content-Type', 'application/json');
-    res.json({success: true, status: 'You are successfully logged in!'});
+    res.json({success: true, token: token, status: 'You are successfully logged in!'});
 });
 
 
