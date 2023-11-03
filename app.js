@@ -16,7 +16,7 @@ const partnerRouter = require('./routes/partnerRouter');
 const mongoose = require('mongoose');
 
 //url to mongodb server, set up config.js
-const url = 'config.mongoUrl';
+const url = config.mongoUrl;
 
 //connect to mongoose
 const connect = mongoose.connect(url, {
@@ -66,6 +66,8 @@ app.use(function (err, req, res, next) {
     // set locals, only providing error in development
     res.locals.message = err.message;
     res.locals.error = req.app.get('env') === 'development' ? err : {};
+
+    console.log(err); //Added for debugging
 
     // render the error page
     res.status(err.status || 500);

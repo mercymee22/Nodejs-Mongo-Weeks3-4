@@ -9,6 +9,8 @@ const Currency = mongoose.Types.Currency;
 // const campsiteSchema = new Schema - instantiates a new object called campsiteSchema. First argument - object that contains the schema definitions. Second optional argument - used for setting various configuration options.
 // timestamps: true - adds 2 properties to the schema, created at and updated at. Mongoose will manage these properties for us.
 // comments: [commentSchema] - adding a schema as a subdocument inside the campsite schema
+// type: mongoose.Schema.Types.ObjectId - instead of storing a string with an author name, we're storing a reference to a user document through the user documents object id
+// ref: 'User' - hold the name of the model for that document which is User.
 
 const commentSchema = new Schema({
     rating: {
@@ -22,8 +24,8 @@ const commentSchema = new Schema({
         required: true
     },
     author: {
-        type: String,
-        required: true
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
     }
 }, {
     timestamps: true

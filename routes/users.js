@@ -14,26 +14,44 @@ router.get('/', function (req, res, next) {
 // User.register - called as a static method on the User model. 3 arguments to this register method. 
 // new User({username: req.body.username}) - 1st argument, create a new User with a name given to us from the client. 
 // req.body.password - 2nd argument will be a password, plug in directly from the incoming request from the client.
-// err - 3rd argument a callback method which will recieve an error if there was one from the register method.
+// (err, user) - 3rd argument a callback method which will recieve an error if there was one from the register method but if registration successful, user contains the user doucment that was created.
 // res.statusCode = 500 - internal server error.
 // res.json({err: err}) - send back a json object as a response. provides info about the error property on the error object.
-//  passport.authenticate('local') - if no error, then use passport to authenticate the newly registered user. Authenticate method returns a function. call that function and pass in the rec, res object along with a callback function that will set up a response to the client.
+// if (req.body.firstname) - Checks to see if a firstname was sent, (front end application should configure that field to be sent, server is seeing if it was sent here.)
+// user.firstname = req.body.firstname - if it was sent, set the user.firstname field with that value.
+// user.save(err => - Save to the database and handle any errors.
+// passport.authenticate('local') - if no error, then use passport to authenticate the newly registered user. Authenticate method returns a function. call that function and pass in the rec, res object along with a callback function that will set up a response to the client.
+
 
 router.post('/signup', (req, res) => {
     User.register(
         new User({username: req.body.username}),
         req.body.password,
-        err => {
+        (err, user) => {
             if (err) {
                 res.statusCode = 500;
                 res.setHeader('Content-Type', 'application/json');
                 res.json({err: err});
             } else {
-                passport.authenticate('local')(req, res, () => {
-                    res.statusCode = 200;
-                    res.setHeader('Content-Type', 'application/json');
-                    res.json({success: true, status: 'Registration Successful!'});
-                });
+                if (req.body.firstname) {
+                    user.firstname = req.body.firstname;
+                }
+                if (req.body.lastname) {
+                    user.lastname = req.body.lastname;
+                }
+                user.save(err => {
+                    if (err) {
+                        res.statusCode = 500;
+                        res.setHeader('Content-Type', 'application/json');
+                        res.json({err: err}); // error property of the error object
+                        return;
+                    }
+                    passport.authenticate('local')(req, res, () => {
+                        res.statusCode = 200;
+                        res.setHeader('Content-Type', 'application/json');
+                        res.json({success: true, status: 'Registration Successful!'});
+                    });
+                });    
             }
         }
     );

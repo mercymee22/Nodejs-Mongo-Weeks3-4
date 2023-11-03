@@ -10,6 +10,7 @@ const campsiteRouter = express.Router();
 
 // chain the methods into a single chain. All these methods share the same path, /campsites, which was defined in server.js. End up with a single statment that handles all the endpoints for routing to campsites.
 // both routes ('/') and ('/:campsiteId) are attached to the same object (campsiteRouter) so when campsiteRouter is exported, 1 object with all the routes chained together are exported.
+// .populate('comments.author') - tells our application that when the campsite's documents are retreived to populate the author field of the commments sub-document by finding the user document that matches the object id that's stored there.
 // res.json - this method, passed the campsites argument, sends json data to the client in the response stream and automatically closes the response stream afterward, so don't need res.end.
 // .catch(err => next(err)) - catches any errors and the next function passes the error to the overall error handler in the express application since it has built in error handling.
 // Campsite.create(req.body) - creates a new campsite document and saves it to the MondoDB server. Create the document from request body which contains the info for the campsite, to post from the client.  This is a method provided by Mongoose for creating a new document in the collection associated with the specified model. When you call Campsite.create(), you're telling Mongoose to create a new document in the "Campsite" collection.
@@ -18,10 +19,12 @@ const campsiteRouter = express.Router();
 // Campsite.deleteMany - empty array results in every document in the campsites collection being deleted.
 // $set: req.body - The second argument specifies the update to be applied, where req.body contains the new data to set for the document.
 // authenticate.verifyUser - verify that the user is authenticated for every endpoint in this router except the get endpoints because get is a simple read only operation.
+// .populate('comments.author') - tells our application, when the campsite's documents are retreived to populate the author field of the comments sub-document by finding the user document that matches the object id that's stored there.
 
 campsiteRouter.route('/')
     .get((req, res, next) => {
         Campsite.find()
+        .populate('comments.author')
             .then(campsites => {
                 res.statusCode = 200;
                 res.setHeader('Content-Type', 'application/json');
@@ -56,6 +59,7 @@ campsiteRouter.route('/')
 campsiteRouter.route('/:campsiteId')
     .get((req, res, next) => {
         Campsite.findById(req.params.campsiteId)
+        .populate('comments.author')
             .then(campsite => {
                 res.statusCode = 200;
                 res.setHeader('Content-Type', 'application/json');
@@ -105,10 +109,13 @@ campsiteRouter.route('/:campsiteId')
 // campsite.save() - use this to save changes to the Mongo database. the c in campsite is lowercase because it's not a static method, it a method being performed on this particular campsite instance, the document itself.
 // -- .delete --
 // for loop - goes through and deletes every comment in the campsites array, (go over this loop to understand it.)
+//  campsite.comments.push(req.body) - when the comment is sent to the server it's sent in the body. Here we push the body into the comments array.
+//  req.body.author = req.user._id - , this adds the id of the current user to that request body as the author before it gets pushed into the comments array. This ensures that when the comment is saved, it will have the id of the user who submitted the comment in the author field.
 
 campsiteRouter.route('/:campsiteId/comments')
     .get((req, res, next) => {
         Campsite.findById(req.params.campsiteId)
+        .populate('comments.author')
             .then(campsite => {
                 if (campsite) {
                     res.statusCode = 200;
@@ -126,6 +133,7 @@ campsiteRouter.route('/:campsiteId/comments')
         Campsite.findById(req.params.campsiteId)
             .then(campsite => {
                 if (campsite) {
+                    req.body.author = req.user._id;
                     campsite.comments.push(req.body);
                     campsite.save()
                         .then(campsite => {
@@ -189,6 +197,7 @@ campsiteRouter.route('/:campsiteId/comments')
 campsiteRouter.route('/:campsiteId/comments/:commentId')
     .get((req, res, next) => {
         Campsite.findById(req.params.campsiteId)
+        .populate('comments.author')
             .then(campsite => {
                 if (campsite && campsite.comments.id(req.params.commentId)) {
                     res.statusCode = 200;
