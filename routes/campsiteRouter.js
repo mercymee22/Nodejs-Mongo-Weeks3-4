@@ -4,7 +4,7 @@
 
 const express = require('express');
 const Campsite = require('../models/campsite');
-const authenticate = require('../authenticate');
+const { verifyUser, verifyAdmin } = require('../authenticate'); //Both are imported from the authenticate module/file, they are being destructured so authenticate.verifyUser, authenticate.verifyAdmin can be shorted to verifyUser, verifyAdmin.
 
 const campsiteRouter = express.Router();
 
@@ -18,7 +18,7 @@ const campsiteRouter = express.Router();
 // .delete((req, res, next) - pass in next method for error handling
 // Campsite.deleteMany - empty array results in every document in the campsites collection being deleted.
 // $set: req.body - The second argument specifies the update to be applied, where req.body contains the new data to set for the document.
-// authenticate.verifyUser - verify that the user is authenticated for every endpoint in this router except the get endpoints because get is a simple read only operation.
+// authenticate.verifyUser - verifies that the user is authenticated for every endpoint in this router except the get endpoints because get is a simple read only operation.
 // .populate('comments.author') - tells our application, when the campsite's documents are retreived to populate the author field of the comments sub-document by finding the user document that matches the object id that's stored there.
 
 campsiteRouter.route('/')
@@ -32,7 +32,7 @@ campsiteRouter.route('/')
             })
             .catch(err => next(err));
     })
-    .post(authenticate.verifyUser, (req, res, next) => {
+    .post(verifyUser, verifyAdmin, (req, res, next) => {
         Campsite.create(req.body)
             .then(campsite => {
                 console.log('Campsite created ', campsite);
@@ -42,11 +42,11 @@ campsiteRouter.route('/')
             })
             .catch(err => next(err));
     })
-    .put(authenticate.verifyUser, (req, res) => {
+    .put(verifyUser, (req, res) => {
         res.statusCode = 403;
         res.end('PUT operation not supported on /campsites');
     })
-    .delete(authenticate.verifyUser, (req, res, next) => {
+    .delete(verifyUser, verifyAdmin, (req, res, next) => {
         Campsite.deleteMany()
             .then(response => {
                 res.statusCode = 200;
@@ -67,11 +67,11 @@ campsiteRouter.route('/:campsiteId')
             })
             .catch(err => next(err));
     })
-    .post(authenticate.verifyUser, (req, res) => {
+    .post(verifyUser, (req, res) => {
         res.statusCode = 403;
         res.end(`POST operation not supported on /campsites/${req.params.campsiteId}`);
     })
-    .put(authenticate.verifyUser, (req, res, next) => {
+    .put(verifyUser, verifyAdmin, (req, res, next) => {
         Campsite.findByIdAndUpdate(req.params.campsiteId, {
             $set: req.body
         }, { new: true })
@@ -82,7 +82,7 @@ campsiteRouter.route('/:campsiteId')
             })
             .catch(err => next(err));
     })
-    .delete(authenticate.verifyUser, (req, res, next) => {
+    .delete(verifyUser, verifyAdmin, (req, res, next) => {
         Campsite.findByIdAndDelete(req.params.campsiteId)
             .then(response => {
                 res.statusCode = 200;
@@ -129,7 +129,7 @@ campsiteRouter.route('/:campsiteId/comments')
             })
             .catch(err => next(err));
     })
-    .post(authenticate.verifyUser, (req, res, next) => {
+    .post(verifyUser, (req, res, next) => {
         Campsite.findById(req.params.campsiteId)
             .then(campsite => {
                 if (campsite) {
@@ -150,11 +150,11 @@ campsiteRouter.route('/:campsiteId/comments')
             })
             .catch(err => next(err));
     })
-    .put(authenticate.verifyUser, (req, res) => {
+    .put(verifyUser, (req, res) => {
         res.statusCode = 403;
         res.end(`PUT operation not supported on /campsites/${req.params.campsiteId}/comments`);
     })
-    .delete(authenticate.verifyUser, (req, res, next) => {
+    .delete(verifyUser, (req, res, next) => {
         Campsite.findById(req.params.campsiteId)
             .then(campsite => {
                 if (campsite) {
@@ -215,27 +215,34 @@ campsiteRouter.route('/:campsiteId/comments/:commentId')
             })
             .catch(err => next(err));
     })
-    .post(authenticate.verifyUser, (req, res, next) => {
+    .post(verifyUser, (req, res, next) => {
         res.statusCode = 403;
         res.end(`POST operation not supported on /campsites/${req.params.campsiteId}/comments/${req.params.commentId}`);
     })
-    .put(authenticate.verifyUser, (req, res, next) => {
+    .put(verifyUser, (req, res, next) => {
         Campsite.findById(req.params.campsiteId)
         .then(campsite => {
             if (campsite && campsite.comments.id(req.params.commentId)) {
-                if (req.body.rating) {
-                    campsite.comments.id(req.params.commentId).rating = req.body.rating;
+                const comment = campsite.comments.id(req.params.commentId);
+                if (comment.author.equals(req.user._id)) {
+                    if (req.body.rating) {
+                        campsite.comments.id(req.params.commentId).rating = req.body.rating;
+                    }
+                    if (req.body.text) {
+                        campsite.comments.id(req.params.commentId).text = req.body.text;
+                    }
+                    campsite.save()
+                    .then(campsite => {
+                        res.statusCode = 200;
+                        res.setHeader('Content-Type', 'application/json');
+                        res.json(campsite);
+                    })
+                    .catch(err => next(err));
+                } else {
+                    err = new Error('You are not authorized to update this comment!');
+                    err.status = 403;
+                    return next(err);
                 }
-                if (req.body.text) {
-                    campsite.comments.id(req.params.commentId).text = req.body.text;
-                }
-                campsite.save()
-                .then(campsite => {
-                    res.statusCode = 200;
-                    res.setHeader('Content-Type', 'application/json');
-                    res.json(campsite);
-                })
-                .catch(err => next(err));
             } else if (!campsite) {
                 err = new Error(`Campsite ${req.params.campsiteId} not found`);
                 err.status = 404;
@@ -248,11 +255,12 @@ campsiteRouter.route('/:campsiteId/comments/:commentId')
         })
         .catch(err => next(err));
     })
-    .delete(authenticate.verifyUser, (req, res, next) => {
+    .delete(verifyUser, (req, res, next) => {
         Campsite.findById(req.params.campsiteId)
         .then(campsite => {
             if (campsite && campsite.comments.id(req.params.commentId)) {
-                campsite.comments.id(req.params.commentId).remove();
+                if((campsite.comments.id(req.params.commentid).author._id).equals(req.user._id)) {
+                    campsite.comments.id(req.params.commentId).remove();
                 campsite.save()
                 .then(campsite => {
                     res.statusCode = 200;
@@ -260,6 +268,11 @@ campsiteRouter.route('/:campsiteId/comments/:commentId')
                     res.json(campsite);
                 })
                 .catch(err => next(err));
+                } else {
+                    err = new Error('You are not authorized to delete this comment!');
+                    err.status = 403;  //Forbidden
+                    return next(err);
+                }
             } else if (!campsite) {
                 err = new Error(`Campsite ${req.params.campsiteId} not found`);
                 err.status = 404;

@@ -9,6 +9,17 @@ const jwt = require('jsonwebtoken'); // used to create, sign, and verify tokens
 
 const config = require('./config.js');
 
+// function checks if the user is an admin
+exports.verifyAdmin = (req, res, next) => {
+    if (req.user && req.user.admin === true) {
+        return next();
+    } else {
+        const err = new Error('You are not authorized to perform this operation!');
+        err.status = 403;
+        return next(err);
+    }
+}
+
 // passport.use(new LocalStrategy) - passport.use method is how we add the specific strategy plugin that we want to use.
 // (new LocalStrategy) - Create a new insance of LocalStrategy and pass it in. 
 // User.authenticate - LocalStrategy requires a verify callback function that will verify the username and password against the locally stored usernames and passwords. provided by the passport local mongoose plugin.
