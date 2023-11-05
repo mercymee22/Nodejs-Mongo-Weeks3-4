@@ -16,7 +16,7 @@ router.get('/', authenticate.verifyUser, authenticate.verifyAdmin, (req, res, ne
         .catch((err) => next(err));
 });
 
-// router.post('/signup' - allows a new user to register, signup path.
+// router.post('/signup' - allows a new user to register, signup path
 // User.register - called as a static method on the User model. 3 arguments to this register method. 
 // new User({username: req.body.username}) - 1st argument, create a new User with a name given to us from the client. 
 // req.body.password - 2nd argument will be a password, plug in directly from the incoming request from the client.
