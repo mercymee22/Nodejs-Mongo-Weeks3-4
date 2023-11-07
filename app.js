@@ -30,8 +30,22 @@ connect.then(() => console.log('Connected correctly to server'),
     err => console.log(err)
 );
 var app = express();
-// view engine setup
 
+// Redirecting any traffic coming to the insecure port so that it comes to the secure port.
+// app.all - routing method that catches every type of request that comes into the server (ie: get, post, delete, etc).
+// * - wildcard, catches every request to any path on our server.
+// req.secure - in the middleware functions body, checking a property of the request object called secure. Secure is automatically set by express to true when the request is sent by https.
+
+app.all('*', (req, res, next) => {
+    if (req.secure) {
+        return next();
+    } else {
+        console.log(`Redirecting to: https://${req.hostname}:${app.get('secPort')}${req.url}`);
+        res.redirect(301, `https://${req.hostname}:${app.get('secPort')}${req.url}`);
+    }
+});
+
+// view engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'jade');
 app.use(logger('dev'));
