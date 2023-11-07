@@ -10,6 +10,7 @@ var usersRouter = require('./routes/users');
 const campsiteRouter = require('./routes/campsiteRouter');
 const promotionRouter = require('./routes/promotionRouter');
 const partnerRouter = require('./routes/partnerRouter');
+const uploadRouter = require('./routes/uploadRouter');
 
 //require mongoose
 const mongoose = require('mongoose');
@@ -59,6 +60,7 @@ app.use(passport.initialize());
 // custom middleware function for authentication
 // This function, like all express middleware functions, must have the request and response objects as parameters.
 // The session middleware automatically adds a property called session to the request message.
+// adding the routers and specifying the paths they handle.
 
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
@@ -68,6 +70,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/campsites', campsiteRouter);
 app.use('/promotions', promotionRouter);
 app.use('/partners', partnerRouter);
+app.use('/imageUpload', uploadRouter);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
