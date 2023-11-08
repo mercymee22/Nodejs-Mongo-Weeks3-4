@@ -2,11 +2,12 @@ const express = require('express');
 const User = require('../models/user');
 const passport = require('passport');
 const authenticate = require('../authenticate');
+const cors = require('./cors');
 
 const router = express.Router();
 
 /* GET user listing. */
-router.get('/', authenticate.verifyUser, authenticate.verifyAdmin, (req, res, next) => {
+router.get('/', cors.corsWithOptions, authenticate.verifyUser, authenticate.verifyAdmin, (req, res, next) => {
     User.find({})
         .then((users) => {
             res.statusCode = 200;
@@ -29,7 +30,7 @@ router.get('/', authenticate.verifyUser, authenticate.verifyAdmin, (req, res, ne
 // passport.authenticate('local') - if no error, then use passport to authenticate the newly registered user. Authenticate method returns a function. call that function and pass in the rec, res object along with a callback function that will set up a response to the client.
 
 
-router.post('/signup', (req, res) => {
+router.post('/signup', cors.corsWithOptions, (req, res) => {
     User.register(
         new User({username: req.body.username}),
         req.body.password,
@@ -70,7 +71,7 @@ router.post('/signup', (req, res) => {
 // ({_id: req.user._id}) - passing it an object that contains a payload which includes the user id from the request object.
 // token: token - including the token in a respone to the client. after this all the subsequent requests from this client will carry the token in the header which we'll use to verify the user has already logged in.
 
-router.post('/login', passport.authenticate('local'), (req, res) => {
+router.post('/login', cors.corsWithOptions, passport.authenticate('local'), (req, res) => {
     const token = authenticate.getToken({_id: req.user._id});
     res.statusCode = 200;
     res.setHeader('Content-Type', 'application/json');
@@ -85,7 +86,7 @@ router.post('/login', passport.authenticate('local'), (req, res) => {
 // res.redirect('/') - calling a method on the response object, this redirects the user to the root path (localhost 3000/)
 // else - if a session doesn't exist (the client is requesting to log out without being logged in).
 
-router.get('/logout', (req, res, next) => {
+router.get('/logout', cors.corsWithOptions, (req, res, next) => {
   if (req.session) {
       req.session.destroy();
       res.clearCookie('session-id');

@@ -5,11 +5,14 @@
 const express = require('express');
 const Campsite = require('../models/campsite');
 const { verifyUser, verifyAdmin } = require('../authenticate'); //Both are imported from the authenticate module/file, they are being destructured so authenticate.verifyUser, authenticate.verifyAdmin can be shorted to verifyUser, verifyAdmin.
+const cors = require('./cors');
 
 const campsiteRouter = express.Router();
 
 // chain the methods into a single chain. All these methods share the same path, /campsites, which was defined in server.js. End up with a single statment that handles all the endpoints for routing to campsites.
 // both routes ('/') and ('/:campsiteId) are attached to the same object (campsiteRouter) so when campsiteRouter is exported, 1 object with all the routes chained together are exported.
+// .options - use .options to handle a "pre-flight" request from client, which awaits a response from the server with info on what kind of requests it will accept, so the client can figure out whether or not you can send it's actual request.
+// cors.corsWithOptions - if the options request is on this path then we'll call cors.corsWithOptions function.
 // .populate('comments.author') - tells our application that when the campsite's documents are retreived to populate the author field of the commments sub-document by finding the user document that matches the object id that's stored there.
 // res.json - this method, passed the campsites argument, sends json data to the client in the response stream and automatically closes the response stream afterward, so don't need res.end.
 // .catch(err => next(err)) - catches any errors and the next function passes the error to the overall error handler in the express application since it has built in error handling.
@@ -20,9 +23,11 @@ const campsiteRouter = express.Router();
 // $set: req.body - The second argument specifies the update to be applied, where req.body contains the new data to set for the document.
 // authenticate.verifyUser - verifies that the user is authenticated for every endpoint in this router except the get endpoints because get is a simple read only operation.
 // .populate('comments.author') - tells our application, when the campsite's documents are retreived to populate the author field of the comments sub-document by finding the user document that matches the object id that's stored there.
+// .get(cors.cors - for all get requests insert the basic default cors middleware cors.cors
 
 campsiteRouter.route('/')
-    .get((req, res, next) => {
+.options(cors.corsWithOptions, (req, res) => res.sendStatus(200))
+.get(cors.cors, (req, res, next) => {
         Campsite.find()
         .populate('comments.author')
             .then(campsites => {
@@ -32,7 +37,7 @@ campsiteRouter.route('/')
             })
             .catch(err => next(err));
     })
-    .post(verifyUser, verifyAdmin, (req, res, next) => {
+    .post(cors.corsWithOptions, verifyUser, verifyAdmin, (req, res, next) => {
         Campsite.create(req.body)
             .then(campsite => {
                 console.log('Campsite created ', campsite);
@@ -42,11 +47,11 @@ campsiteRouter.route('/')
             })
             .catch(err => next(err));
     })
-    .put(verifyUser, (req, res) => {
+    .put(cors.corsWithOptions, verifyUser, verifyAdmin, (req, res) => {
         res.statusCode = 403;
         res.end('PUT operation not supported on /campsites');
     })
-    .delete(verifyUser, verifyAdmin, (req, res, next) => {
+    .delete(cors.corsWithOptions, verifyUser, verifyAdmin, (req, res, next) => {
         Campsite.deleteMany()
             .then(response => {
                 res.statusCode = 200;
@@ -57,7 +62,8 @@ campsiteRouter.route('/')
     });
 
 campsiteRouter.route('/:campsiteId')
-    .get((req, res, next) => {
+    .options(cors.corsWithOptions, (req, res) => res.sendStatus(200))
+    .get(cors.cors, (req, res, next) => {
         Campsite.findById(req.params.campsiteId)
         .populate('comments.author')
             .then(campsite => {
@@ -67,11 +73,11 @@ campsiteRouter.route('/:campsiteId')
             })
             .catch(err => next(err));
     })
-    .post(verifyUser, (req, res) => {
+    .post(cors.corsWithOptions, verifyUser, verifyAdmin, (req, res) => {
         res.statusCode = 403;
         res.end(`POST operation not supported on /campsites/${req.params.campsiteId}`);
     })
-    .put(verifyUser, verifyAdmin, (req, res, next) => {
+    .put(cors.corsWithOptions, verifyUser, verifyAdmin, (req, res, next) => {
         Campsite.findByIdAndUpdate(req.params.campsiteId, {
             $set: req.body
         }, { new: true })
@@ -82,7 +88,7 @@ campsiteRouter.route('/:campsiteId')
             })
             .catch(err => next(err));
     })
-    .delete(verifyUser, verifyAdmin, (req, res, next) => {
+    .delete(cors.corsWithOptions, verifyUser, verifyAdmin, (req, res, next) => {
         Campsite.findByIdAndDelete(req.params.campsiteId)
             .then(response => {
                 res.statusCode = 200;
@@ -113,7 +119,8 @@ campsiteRouter.route('/:campsiteId')
 //  req.body.author = req.user._id - , this adds the id of the current user to that request body as the author before it gets pushed into the comments array. This ensures that when the comment is saved, it will have the id of the user who submitted the comment in the author field.
 
 campsiteRouter.route('/:campsiteId/comments')
-    .get((req, res, next) => {
+    .options(cors.corsWithOptions, (req, res) => res.sendStatus(200))
+    .get(cors.cors, (req, res, next) => {
         Campsite.findById(req.params.campsiteId)
         .populate('comments.author')
             .then(campsite => {
@@ -129,7 +136,7 @@ campsiteRouter.route('/:campsiteId/comments')
             })
             .catch(err => next(err));
     })
-    .post(verifyUser, (req, res, next) => {
+    .post(cors.corsWithOptions, verifyUser, (req, res, next) => {
         Campsite.findById(req.params.campsiteId)
             .then(campsite => {
                 if (campsite) {
@@ -150,11 +157,11 @@ campsiteRouter.route('/:campsiteId/comments')
             })
             .catch(err => next(err));
     })
-    .put(verifyUser, (req, res) => {
+    .put(cors.corsWithOptions, verifyUser, verifyAdmin, (req, res) => {
         res.statusCode = 403;
         res.end(`PUT operation not supported on /campsites/${req.params.campsiteId}/comments`);
     })
-    .delete(verifyUser, (req, res, next) => {
+    .delete(cors.corsWithOptions, verifyUser, (req, res, next) => {
         Campsite.findById(req.params.campsiteId)
             .then(campsite => {
                 if (campsite) {
@@ -195,7 +202,8 @@ campsiteRouter.route('/:campsiteId/comments')
 // campsite.comments.id(req.params.commentId).remove() - removes a comment
 
 campsiteRouter.route('/:campsiteId/comments/:commentId')
-    .get((req, res, next) => {
+    .options(cors.corsWithOptions, (req, res) => res.sendStatus(200))
+    .get(cors.cors, (req, res, next) => {
         Campsite.findById(req.params.campsiteId)
         .populate('comments.author')
             .then(campsite => {
@@ -215,11 +223,11 @@ campsiteRouter.route('/:campsiteId/comments/:commentId')
             })
             .catch(err => next(err));
     })
-    .post(verifyUser, (req, res, next) => {
+    .post(cors.corsWithOptions, verifyUser, verifyAdmin, (req, res, next) => {
         res.statusCode = 403;
         res.end(`POST operation not supported on /campsites/${req.params.campsiteId}/comments/${req.params.commentId}`);
     })
-    .put(verifyUser, (req, res, next) => {
+    .put(cors.corsWithOptions, verifyUser, (req, res, next) => {
         Campsite.findById(req.params.campsiteId)
         .then(campsite => {
             if (campsite && campsite.comments.id(req.params.commentId)) {
@@ -255,7 +263,7 @@ campsiteRouter.route('/:campsiteId/comments/:commentId')
         })
         .catch(err => next(err));
     })
-    .delete(verifyUser, (req, res, next) => {
+    .delete(cors.corsWithOptions, verifyUser, (req, res, next) => {
         Campsite.findById(req.params.campsiteId)
         .then(campsite => {
             if (campsite && campsite.comments.id(req.params.commentId)) {
