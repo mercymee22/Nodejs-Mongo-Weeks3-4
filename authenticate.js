@@ -4,6 +4,7 @@ const passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
 const User = require('./models/user');
 const JwtStrategy = require('passport-jwt').Strategy;
+const FacebookTokenStrategy = require('passport-facebook-token')
 const ExtractJwt = require('passport-jwt').ExtractJwt; // This is an object that provide us with several helper methods. We'll use one to extract the jw token from a request object
 const jwt = require('jsonwebtoken'); // used to create, sign, and verify tokens
 
@@ -70,6 +71,37 @@ exports.jwtPassport = passport.use(
                     return done(null, user);  // if user was found, return done callback, null - no error, user - user document
                 } else {
                     return done(null, false); // no error but no user document found that matched what was in the token.
+                }
+            });
+        }
+    )
+);
+
+exports.facebookPassport = passport.use(
+    new FacebookTokenStrategy(
+        {
+            clientID: config.facebook.clientId,
+            clientSecret: config.facebook.clientSecret
+        }, 
+        (accessToken, refreshToken, profile, done) => {
+            User.findOne({facebookId: profile.id}, (err, user) => {
+                if (err) {
+                    return done(err, false);
+                }
+                if (!err && user) {
+                    return done(null, user);
+                } else {
+                    user = new User({ username: profile.displayName });
+                    user.facebookId = profile.id;
+                    user.firstname = profile.name.givenName;
+                    user.lastname = profile.name.familyName;
+                    user.save((err, user) => {
+                        if (err) {
+                            return done(err, false);
+                        } else {
+                            return done(null, user);
+                        }
+                    });
                 }
             });
         }

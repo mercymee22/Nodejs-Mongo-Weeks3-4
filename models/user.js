@@ -19,7 +19,8 @@ const userSchema = new Schema({
     admin: {
         type: Boolean,
         default: false
-    }
+    },
+    facebookId: String
 });
 
 // use method plugin on the userSchema with an argument to plugin the plugin. This plugin provides us with additonal authentication methods such as the authenticate method.
